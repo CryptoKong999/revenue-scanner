@@ -445,7 +445,7 @@ def main():
     app.add_handler(CommandHandler("projects", cmd_projects))
     app.add_handler(CommandHandler("profile", cmd_profile))
     app.add_handler(CommandHandler("rescan", cmd_rescan))
-    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("help", cmd_start))
     app.add_handler(CallbackQueryHandler(callback_handler))
     logger.info("Revenue Opportunity Scanner v2 starting...")
     app.run_polling(drop_pending_updates=True)
