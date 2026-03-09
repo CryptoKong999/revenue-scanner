@@ -57,9 +57,26 @@ def owner_only(func):
 async def post_init(app: Application):
     """Initialize database pool after app starts."""
     global pool
-    pool = await db.get_pool()
-    await db.init_db(pool)
-    logger.info("Database initialized.")
+    
+    # Debug: log which env vars are set
+    env_check = {
+        "DATABASE_URL": bool(os.getenv("DATABASE_URL")),
+        "TELEGRAM_BOT_TOKEN": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
+        "TELEGRAM_API_ID": bool(os.getenv("TELEGRAM_API_ID")),
+        "TELEGRAM_API_HASH": bool(os.getenv("TELEGRAM_API_HASH")),
+        "TELEGRAM_STRING_SESSION": bool(os.getenv("TELEGRAM_STRING_SESSION")),
+        "ANTHROPIC_API_KEY": bool(os.getenv("ANTHROPIC_API_KEY")),
+    }
+    logger.info(f"Environment check: {env_check}")
+    
+    try:
+        pool = await db.get_pool()
+        await db.init_db(pool)
+        logger.info("Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Database init failed: {e}")
+        logger.error("Bot will start WITHOUT database. /scan and /plan won't work until DB is fixed.")
+        pool = None
 
 
 # ═══════════════════════════════════════════

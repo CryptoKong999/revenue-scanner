@@ -3,16 +3,47 @@ Database module for Revenue Opportunity Scanner.
 Stores opportunities, user profile insights, and completion tracking.
 """
 import os
+import ssl
 import json
+import logging
 import asyncpg
 from datetime import datetime, timezone
 
+logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
 async def get_pool():
-    return await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set!")
+    
+    # Log masked URL for debugging
+    masked = DATABASE_URL[:20] + "..." + DATABASE_URL[-20:] if len(DATABASE_URL) > 40 else "too_short"
+    logger.info(f"Connecting to DB: {masked}")
+    
+    # Try with SSL first (Railway default), fallback without
+    try:
+        return await asyncpg.create_pool(
+            DATABASE_URL, min_size=1, max_size=5, 
+            ssl="require",
+            timeout=10
+        )
+    except Exception as e1:
+        logger.warning(f"SSL connection failed: {e1}, trying without SSL...")
+        try:
+            return await asyncpg.create_pool(
+                DATABASE_URL, min_size=1, max_size=5,
+                ssl=False,
+                timeout=10
+            )
+        except Exception as e2:
+            logger.warning(f"No-SSL failed too: {e2}, trying with ssl=prefer...")
+            # Last attempt — let asyncpg figure it out
+            return await asyncpg.create_pool(
+                DATABASE_URL, min_size=1, max_size=5,
+                timeout=10
+            )
 
 
 async def init_db(pool):
