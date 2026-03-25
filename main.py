@@ -458,8 +458,17 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     await query.answer()
 
+    def _parse_id(prefix: str) -> int | None:
+        """Safely parse opp_id from callback data."""
+        try:
+            return int(data.replace(prefix, ""))
+        except (ValueError, TypeError):
+            return None
+
     if data.startswith("done_"):
-        opp_id = int(data.replace("done_", ""))
+        opp_id = _parse_id("done_")
+        if opp_id is None:
+            return
         await db.mark_done(pool, opp_id)
         opp = await db.get_opportunity_by_id(pool, opp_id)
         new_markup = _remove_opp_buttons(query.message.reply_markup, opp_id)
@@ -468,7 +477,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(f"✅ #{opp_id} выполнена! +${opp['revenue_low']}-${opp['revenue_high']} 💰")
 
     elif data.startswith("skipask_"):
-        opp_id = int(data.replace("skipask_", ""))
+        opp_id = _parse_id("skipask_")
+        if opp_id is None:
+            return
         # Replace this opp's row with reason buttons, keep others
         keyboard = []
         if query.message.reply_markup:
@@ -487,7 +498,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("skipr_"):
         parts = data.split("_", 2)
-        opp_id = int(parts[1])
+        try:
+            opp_id = int(parts[1])
+        except (ValueError, IndexError):
+            return
         reason = parts[2]
         reason_text = {"unrealistic": "Нереалистично", "notmine": "Не моё", "outdated": "Неактуально", "toosmall": "Слишком мелко", "later": "Сделаю позже"}.get(reason, reason)
         if reason == "later":
@@ -502,7 +516,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(f"⏭ #{opp_id} — {reason_text}. Учту в будущем.")
 
     elif data.startswith("detail_"):
-        opp_id = int(data.replace("detail_", ""))
+        opp_id = _parse_id("detail_")
+        if opp_id is None:
+            return
         opp = await db.get_opportunity_by_id(pool, opp_id)
         if opp:
             actions = json.loads(opp["action_items"]) if isinstance(opp["action_items"], str) else opp["action_items"]
@@ -514,7 +530,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(text, parse_mode=ParseMode.HTML)
 
     elif data.startswith("analyze_"):
-        opp_id = int(data.replace("analyze_", ""))
+        opp_id = _parse_id("analyze_")
+        if opp_id is None:
+            return
         opp = await db.get_opportunity_by_id(pool, opp_id)
         if opp:
             await query.message.reply_text("🧠 Анализирую...")
@@ -528,7 +546,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ═══ REVIEW CALLBACKS ═══
     elif data.startswith("rvkeep_"):
-        opp_id = int(data.replace("rvkeep_", ""))
+        opp_id = _parse_id("rvkeep_")
+        if opp_id is None:
+            return
         await db.mark_in_progress(pool, opp_id)
         await query.edit_message_reply_markup(reply_markup=None)
         await query.message.reply_text(f"✅ #{opp_id} — оставлена в pipeline")
@@ -536,7 +556,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _send_next_review(query.message, context)
 
     elif data.startswith("rvtrash_"):
-        opp_id = int(data.replace("rvtrash_", ""))
+        opp_id = _parse_id("rvtrash_")
+        if opp_id is None:
+            return
         await db.mark_skipped(pool, opp_id, "мусор (review)")
         await db.save_feedback(pool, opp_id, "мусор")
         await query.edit_message_reply_markup(reply_markup=None)
@@ -545,7 +567,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _send_next_review(query.message, context)
 
     elif data.startswith("rvstar_"):
-        opp_id = int(data.replace("rvstar_", ""))
+        opp_id = _parse_id("rvstar_")
+        if opp_id is None:
+            return
         async with pool.acquire() as conn:
             await conn.execute("UPDATE opportunities SET priority = 1 WHERE id = $1", opp_id)
         await db.mark_in_progress(pool, opp_id)
@@ -555,7 +579,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _send_next_review(query.message, context)
 
     elif data.startswith("rvskip_"):
-        opp_id = int(data.replace("rvskip_", ""))
+        opp_id = _parse_id("rvskip_")
+        if opp_id is None:
+            return
         await query.edit_message_reply_markup(reply_markup=None)
         context.user_data["review_offset"] = context.user_data.get("review_offset", 0) + 1
         await _send_next_review(query.message, context)
