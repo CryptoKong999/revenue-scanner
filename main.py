@@ -552,7 +552,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await db.mark_in_progress(pool, opp_id)
         await query.edit_message_reply_markup(reply_markup=None)
         await query.message.reply_text(f"✅ #{opp_id} — оставлена в pipeline")
-        context.user_data["review_offset"] = context.user_data.get("review_offset", 0)
+        context.user_data["review_offset"] = context.user_data.get("review_offset", 0) + 1
         await _send_next_review(query.message, context)
 
     elif data.startswith("rvtrash_"):
@@ -575,7 +575,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await db.mark_in_progress(pool, opp_id)
         await query.edit_message_reply_markup(reply_markup=None)
         await query.message.reply_text(f"⭐ #{opp_id} — ТОП приоритет!")
-        context.user_data["review_offset"] = context.user_data.get("review_offset", 0)
+        context.user_data["review_offset"] = context.user_data.get("review_offset", 0) + 1
         await _send_next_review(query.message, context)
 
     elif data.startswith("rvskip_"):
